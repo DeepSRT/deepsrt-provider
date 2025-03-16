@@ -6,6 +6,8 @@ A Cloudflare Worker template that allows you to deploy your own DeepSRT Provider
 
 This worker provides direct URL mapping to R2 bucket objects, specifically designed to serve subtitle files (.srt) from a Cloudflare R2 bucket. This implementation follows the [DeepSRT Provider RFC](https://github.com/DeepSRT/roadmap/issues/15) which defines the standard interface for DeepSRT Providers.
 
+This project is designed to be ready to use out-of-the-box, allowing you to build and deploy a fully functional DeepSRT provider on Cloudflare with minimal configuration. Simply set up your R2 bucket, deploy the worker, and you'll have a production-ready subtitle provider service.
+
 ## URL Mapping
 
 The worker maps URLs directly to R2 bucket paths:
@@ -60,7 +62,6 @@ flowchart TB
 ## Setup
 
 1. Clone this repository
-
 2. Install dependencies:
 
    ```bash
@@ -79,6 +80,16 @@ flowchart TB
      ]
    }
    ```
+
+## Quick Start
+
+You can quickly bootstrap a new DeepSRT Provider project using the following command:
+
+```bash
+npm create cloudflare@latest <YOUR_PROJECT_NAME> -- --template=DeepSRT/deepsrt-provider
+```
+
+This will create a new project based on this template with all the necessary files and configurations.
 
 ## Development
 
