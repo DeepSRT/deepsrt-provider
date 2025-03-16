@@ -12,74 +12,48 @@ This project is designed to be ready to use out-of-the-box, allowing you to buil
 
 The worker maps URLs directly to R2 bucket paths:
 
-* `https://worker_name.sub_domain.workers.dev/srt/` → `s3://{bucket_name}/srt/`
-* `https://worker_name.sub_domain.workers.dev/srt/Ty3wqBxb0UE/default/Ty3wqBxb0UE.srt` → `s3://{bucket_name}/srt/Ty3wqBxb0UE/default/Ty3wqBxb0UE.srt`
+- `https://worker_name.sub_domain.workers.dev/srt/` → `s3://{bucket_name}/srt/`
+- `https://worker_name.sub_domain.workers.dev/srt/Ty3wqBxb0UE/default/Ty3wqBxb0UE.srt` → `s3://{bucket_name}/srt/Ty3wqBxb0UE/default/Ty3wqBxb0UE.srt`
 
-### URL Format Structure
+## URL Format Structure
 
-The URL format follows this pattern:
+The URL format follows this structure:
 
-```plaintext
-https://worker_name.sub_domain.workers.dev/srt/{videoId}/{languageCode}/{videoId}.srt
-```
+- `{worker_domain}/srt/{video_id}/{language}/{video_id}.srt`
 
 Where:
 
-  * `worker_name.sub_domain.workers.dev`: Your Cloudflare Worker's domain
-  * `srt/`: Base path for subtitle files
-  * `{videoId}`: Unique identifier for the video (typically a YouTube video ID)
-  * `{languageCode}`: Language identifier for the subtitle (e.g., 'default', 'en', 'zh-tw')
-  * `{videoId}.srt`: The actual subtitle file (named with the video ID)
+- `{worker_domain}` is your Cloudflare Worker domain
+- `{video_id}` is the YouTube video ID
+- `{language}` is the language code (e.g., 'en', 'zh-TW')
 
-This maps to the following R2 storage path:
+## Cache Strategy
 
-```plaintext
-s3://{bucket_name}/srt/{videoId}/{languageCode}/{videoId}.srt
-```
+The worker implements a cache strategy to improve performance:
 
-This direct mapping allows efficient organization and retrieval of subtitle files by video ID and language.
+- Cache hits are served directly from Cloudflare's edge cache
+- Cache misses are fetched from R2 and then cached
+- Cache-Control headers are set to optimize caching behavior
+- Etag headers are used for validation
 
-## Flow Diagram
+## Error Handling
+
+The worker provides appropriate error responses:
+
+- 404 Not Found for missing files
+- 500 Internal Server Error for R2 access issues
+
+## Architecture
 
 ```mermaid
-flowchart TB
-    classDef default fill:#2C3E50,stroke:#2C3E50,color:#ECF0F1
-    classDef storage fill:#2980B9,stroke:#2980B9,color:#ECF0F1
-    classDef process fill:#27AE60,stroke:#27AE60,color:#ECF0F1
-    classDef error fill:#E74C3C,stroke:#E74C3C,color:#ECF0F1
-
-    A[Request] --> B{Check Path}
-    B -->|Starts with /srt| C[Extract R2 Key]
-    B -->|Other| D[404 Response]:::error
-    C --> E{Get from R2}
-    E -->|Found| F[Set Content-Type]:::process
-    E -->|Not Found| G[404 Response]:::error
-    F --> H[Return File]:::storage
-
+flowchart LR
+    A[Client] -->|Request| B[Cloudflare Worker]
+    B -->|Fetch| C[R2 Bucket]
+    C -->|Response| B
+    B -->|Response| A
+    
     style A fill:#F1C40F,stroke:#F1C40F,color:#000000
 ```
-
-## Setup
-
-1. Clone this repository
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. Configure your R2 bucket in `wrangler.jsonc`:
-
-   ```jsonc
-   {
-     "r2_buckets": [
-       {
-         "binding": "DEEPSRT_BUCKET", // Name of the binding. Do not change.
-         "bucket_name": "${your_bucket_name}" // Name of your R2 bucket
-       }
-     ]
-   }
-   ```
 
 ## Quick Start
 
@@ -91,6 +65,27 @@ npm create cloudflare@latest <YOUR_PROJECT_NAME> -- --template=DeepSRT/deepsrt-p
 
 This will create a new project based on this template with all the necessary files and configurations.
 
+## Setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Configure your R2 bucket in `wrangler.jsonc`:
+
+   ```jsonc
+   {
+     "r2_buckets": [
+       {
+         "binding": "DEEPSRT_BUCKET",
+         "bucket_name": "${your_bucket_name}"
+       }
+     ]
+   }
+   ```
+
 ## Development
 
 ```bash
@@ -101,15 +96,72 @@ npm run dev
 npm run deploy
 ```
 
+## DeepSRT Ecosystem
+
+The following diagram illustrates how the DeepSRT Provider fits into the broader DeepSRT ecosystem:
+
+```mermaid
+flowchart TB
+    %% User flow
+    Browser[Browser] --> Extension[DeepSRT Extension]
+    Extension --> YouTube[YouTube]
+    YouTube -->|No subtitles available| ProviderSystem[SRT Provider System]
+    ProviderSystem --> CustomProvider[Custom SRT Provider]
+    CustomProvider --> CloudflareWorker[This Cloudflare Worker]
+    CloudflareWorker --> R2Storage[Cloudflare R2 Storage]
+    
+    %% Whisper flow
+    WhisperService[Whisper Service] -->| Download video| YouTube
+    WhisperService -->|Transcribe to SRT| SRT[SRT File]
+    SRT -->|Upload SRT| R2Storage
+    
+    %% Styling
+    classDef browser fill:#F8F8F8,stroke:#999,stroke-width:1px,color:#333
+    classDef extension fill:#4285F4,stroke:#2A56C6,stroke-width:1px,color:white
+    classDef youtube fill:#FF0000,stroke:#CC0000,stroke-width:1px,color:white
+    classDef provider fill:#34A853,stroke:#268039,stroke-width:1px,color:white
+    classDef worker fill:#F4B400,stroke:#F09800,stroke-width:1px,color:white
+    classDef storage fill:#7B68EE,stroke:#5D4AB7,stroke-width:1px,color:white
+    classDef whisper fill:#16A085,stroke:#0E6655,stroke-width:1px,color:white
+    
+    class Browser browser
+    class Extension extension
+    class YouTube youtube
+    class ProviderSystem,CustomProvider provider
+    class CloudflareWorker worker
+    class R2Storage storage
+    class WhisperService,SRT whisper
+```
+
+### User Flow
+
+When a user watches a YouTube video:
+
+1. The DeepSRT browser extension first tries to load subtitles from YouTube's native API
+2. If no subtitles are available, the extension falls back to configured SRT providers
+3. Your custom DeepSRT Provider (this Cloudflare Worker) serves SRT files from your R2 storage
+4. The extension displays the subtitles to the user in the browser
+
+### Whisper Transcription Flow
+
+To populate your R2 storage with SRT files:
+
+1. The Whisper service downloads videos from YouTube
+2. Whisper transcribes the audio into SRT format
+3. The generated SRT files are uploaded to your R2 storage
+4. These SRT files are now available to be served by your DeepSRT Provider
+
+This template allows you to quickly deploy your own DeepSRT Provider that can be configured in the extension, enabling subtitle support for videos that don't have official captions.
+
 ## Features
 
-*   Direct path mapping from URLs to R2 objects
-*   Proper content type headers for SRT files
-*   Error handling for missing files
-*   Simple and efficient request processing
+- Direct path mapping from URLs to R2 objects
+- Proper content type headers for SRT files
+- Error handling for missing files
+- Simple and efficient request processing
 
 ## Requirements
 
-*   Cloudflare Workers account
-*   Cloudflare R2 bucket configured
-*   Node.js and npm installed locally
+- Cloudflare Workers account
+- Cloudflare R2 bucket configured
+- Node.js and npm installed locally
