@@ -1,4 +1,4 @@
-# DeepSRT Provider
+# DeepSRT - SRT Provider
 
 A Cloudflare Worker template that allows you to deploy your own DeepSRT Provider on Cloudflare. This provider serves as a static file server for SRT files stored in Cloudflare R2 storage.
 
@@ -51,8 +51,6 @@ flowchart LR
     B -->|Fetch| C[R2 Bucket]
     C -->|Response| B
     B -->|Response| A
-    
-    style A fill:#F1C40F,stroke:#F1C40F,color:#000000
 ```
 
 ## Quick Start
