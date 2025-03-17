@@ -163,3 +163,49 @@ This template allows you to quickly deploy your own DeepSRT Provider that can be
 - Cloudflare Workers account
 - Cloudflare R2 bucket configured
 - Node.js and npm installed locally
+
+## Configure AWS CLI for R2
+
+In ~/.aws/config
+
+```
+[profile cloudflare]
+region = auto
+endpoint_url = https://<your-cloudflare-account-id>.r2.cloudflarestorage.com
+```
+
+To find your Cloudflare account ID:
+1. Go to https://dash.cloudflare.com
+2. Check the URL in the browser, it should look like:
+
+`https://dash.cloudflare.com/<your-cloudflare-account-id>/home/domains`
+
+Configure credentials for AWS CLI:
+
+```sh
+$ aws --profile cloudflare configure
+```
+
+Go to CloudFlare dashboard -> R2 -> Manage API tokens to generate a credentials.
+
+In your shell, createn an alias like this
+
+```sh
+alias r2='aws --profile cloudflare s3'
+```
+
+Now you can use the `r2` alias to manage your R2 bucket. e.g.
+
+```sh
+# list buckets
+$ r2 ls
+# create a bucket
+$ r2 mb s3://<your-bucket-name>
+# sync files
+$ r2 sync <local-directory> s3://<your-bucket-name>
+```
+To sync local SRT files to R2 bucket, run:
+
+```sh
+$ r2 sync <local-directory>/srt/ s3://<your-bucket-name>/srt/
+```
