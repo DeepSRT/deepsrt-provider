@@ -209,3 +209,9 @@ To sync local SRT files to R2 bucket, run:
 ```sh
 $ r2 sync <local-directory>/srt/ s3://<your-bucket-name>/srt/
 ```
+
+To cp a single .srt file to remote
+
+```sh
+$ r2 cp video_id.srt  s3://<your-bucket-name>/srt/video_id/default/video_id.srt
+```
